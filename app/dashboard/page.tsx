@@ -4,8 +4,16 @@ import { supabase } from '@/lib/supabase'
 import { User } from '@supabase/supabase-js';
 
 export default function Dashboard() {
+
+    type Track = {
+        id: string;
+        name: string;
+        artist: string;
+        image: string;
+    };
+
     const [user, setUser] = useState<User | null>(null)
-    const [tracks, setTracks] = useState([])
+    const [tracks, setTracks] = useState<Track[]>([]);
 
     useEffect(() => {
         supabase.auth.getUser().then(({ data }) => setUser(data?.user))
