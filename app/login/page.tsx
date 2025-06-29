@@ -6,7 +6,10 @@ export default function Home() {
     const signIn = async () => {
         await supabase.auth.signInWithOAuth({
             provider: 'spotify',
-        })
+            options: {
+                redirectTo: `${window.location.origin}/dashboard`
+            }
+        });
     }
 
     return (
