@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { items } = await topRes.json()
 
-    const tracks = items.map(track => ({
+    const tracks = items.map((track: any) => ({
         track_id: track.id,
         name: track.name,
         artist: track.artists[0].name,
