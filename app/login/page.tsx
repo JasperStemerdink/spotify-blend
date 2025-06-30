@@ -6,9 +6,6 @@ export default function Home() {
     const signIn = async () => {
         await supabase.auth.signInWithOAuth({
             provider: 'spotify',
-            options: {
-                redirectTo: `https://spotify-blend-ppi76b8zb-jasperstemerdinks-projects.vercel.app/dashboard`
-            }
         });
     }
 
