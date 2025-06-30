@@ -21,13 +21,39 @@ export default function Dashboard() {
 
   useEffect(() => {
     const fetchTopTracks = async () => {
-      const res = await fetch('/api/save-tracks') // This hits your API route
-      const json = await res.json()
-      setTracks(json.tracks)
-    }
+      const { data: { session }, error } = await supabase.auth.getSession();
 
-    if (user) fetchTopTracks()
-  }, [user])
+      if (!session) {
+        console.error('No session found:', error);
+        return;
+      }
+
+      const res = await fetch('/api/save-tracks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        console.error('API error:', json.error || 'Unknown error');
+        return;
+      }
+
+      if (!json.tracks || !Array.isArray(json.tracks)) {
+        console.error('Invalid response:', json);
+        return;
+      }
+
+      setTracks(json.tracks);
+    };
+
+    if (user) fetchTopTracks();
+  }, [user]);
+
 
   return (
       <div>
