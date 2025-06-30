@@ -7,7 +7,7 @@ export default function Home() {
         await supabase.auth.signInWithOAuth({
             provider: 'spotify',
             options: {
-                redirectTo: `${window.location.origin}/dashboard`
+                redirectTo: `https://spotify-blend-ppi76b8zb-jasperstemerdinks-projects.vercel.app/dashboard`
             }
         });
     }
