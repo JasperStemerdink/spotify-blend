@@ -6,10 +6,11 @@ import { User } from '@supabase/supabase-js';
 export default function Dashboard() {
 
   type Track = {
-    id: string;
-    name: string;
-    artist: string;
-    image: string;
+    id: string; // ← this is the row ID
+    track_id: string;
+    track_name: string;
+    artist_name: string;
+    album_image_url: string;
   };
 
   const [user, setUser] = useState<User | null>(null)
@@ -100,7 +101,7 @@ export default function Dashboard() {
         <h3>Your Top Tracks</h3>
         <ul>
           {tracks.map(track => (
-              <li key={track.id}>{track.name} – {track.artist}</li>
+              <li key={track.track_id}>{track.track_name} – {track.artist_name}</li>
           ))}
         </ul>
       </div>
