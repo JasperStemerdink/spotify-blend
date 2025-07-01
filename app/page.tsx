@@ -15,7 +15,27 @@ export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null)
   const [tracks, setTracks] = useState<Track[]>([]);
 
-  // Save Spotify access token to user metadata after OAuth redirect
+  useEffect(() => {
+    const syncUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return;
+
+      setUser(user);
+
+      // Try to insert the user (do nothing if already exists)
+      await supabase
+          .from('users')
+          .upsert({
+            id: user.id,
+            spotify_id: user.user_metadata?.user_name, // depends on Spotify fields
+            display_name: user.user_metadata?.full_name || user.email,
+          }, { onConflict: 'id' });
+    }
+
+    syncUser();
+  }, []);
+
+
   useEffect(() => {
     const saveSpotifyToken = async () => {
       const {
