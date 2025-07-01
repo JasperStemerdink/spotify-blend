@@ -43,9 +43,9 @@ module.exports = async function handler(req, res) {
 
         const tracks = items.map(track => ({
             track_id: track.id,
-            name: track.name,
-            artist: track.artists[0].name,
-            image: track.album.images[0]?.url ?? null,
+            track_name: track.name,
+            artist_name: track.artists[0].name,
+            album_image_url: track.album.images[0]?.url ?? null,
             user_id: user.id
         }));
 
