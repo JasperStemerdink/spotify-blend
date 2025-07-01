@@ -19,15 +19,27 @@ module.exports = async function handler(req, res) {
         return res.status(401).json({ error: "Invalid token" });
     }
 
+    const spotifyToken = user.user_metadata?.spotify_access_token;
+
+    if (!spotifyToken) {
+        return res.status(400).json({ error: 'No Spotify access token found in metadata' });
+    }
+
     try {
         const topRes = await fetch(
             "https://api.spotify.com/v1/me/top/tracks?limit=50",
             {
                 headers: {
-                    Authorization: `Bearer ${token}`,
+                    Authorization: `Bearer ${spotifyToken}`,
                 },
             }
         );
+
+        if (!topRes.ok) {
+            const errorData = await topRes.json();
+            console.error("Spotify API error:", errorData);
+            return res.status(500).json({ error: 'Spotify API error', details: errorData });
+        }
 
         const { items } = await topRes.json();
 
