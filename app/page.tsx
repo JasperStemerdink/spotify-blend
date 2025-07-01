@@ -1,109 +1,74 @@
+// app/page.tsx
 "use client";
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
-import { User } from '@supabase/supabase-js';
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { User } from "@supabase/supabase-js";
+import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
-
-  type Track = {
-    id: string; // ← this is the row ID
-    track_id: string;
-    track_name: string;
-    artist_name: string;
-    album_image_url: string;
-  };
-
-  const [user, setUser] = useState<User | null>(null)
-  const [tracks, setTracks] = useState<Track[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [sessionName, setSessionName] = useState("");
+  const [joinSessionId, setJoinSessionId] = useState("");
+  const router = useRouter();
 
   useEffect(() => {
-    const syncUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return;
+    supabase.auth.getUser().then(({ data }) => setUser(data?.user ?? null));
+  }, []);
 
-      setUser(user);
+  const createSession = async () => {
+    if (!user) return;
 
-      // Try to insert the user (do nothing if already exists)
-      await supabase
-          .from('users')
-          .upsert({
-            id: user.id,
-            spotify_id: user.user_metadata?.user_name, // depends on Spotify fields
-            display_name: user.user_metadata?.full_name || user.email,
-          }, { onConflict: 'id' });
+    const { data, error } = await supabase
+        .from("sessions")
+        .insert([
+          {
+            name: sessionName,
+            host_user_id: user.id,
+            session_mode: 1,
+          },
+        ])
+        .select()
+        .single();
+
+    if (error) {
+      console.error("Error creating session:", error);
+      return;
     }
 
-    syncUser();
-  }, []);
+    router.push(`/session/${data.id}`);
+  };
 
-
-  useEffect(() => {
-    const saveSpotifyToken = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (session?.provider_token && session.user) {
-        // Save Spotify token in user metadata
-        const { error } = await supabase.auth.updateUser({
-          data: { spotify_access_token: session.provider_token },
-        });
-        if (error) console.error("Error saving Spotify token:", error);
-      }
-    };
-
-    saveSpotifyToken();
-  }, []);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data?.user))
-  }, [])
-
-  useEffect(() => {
-    const fetchTopTracks = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
-
-      if (!session) {
-        console.error('No session found:', error);
-        return;
-      }
-
-      const res = await fetch('/api/save-tracks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      const json = await res.json();
-
-      if (!res.ok) {
-        console.error('API error:', json.error || 'Unknown error');
-        return;
-      }
-
-      if (!json.tracks || !Array.isArray(json.tracks)) {
-        console.error('Invalid response:', json);
-        return;
-      }
-
-      setTracks(json.tracks);
-    };
-
-    if (user) fetchTopTracks();
-  }, [user]);
-
+  const joinSession = () => {
+    if (joinSessionId) {
+      router.push(`/session/${joinSessionId}`);
+    }
+  };
 
   return (
       <div>
-        <h2>Welcome, {user?.email}</h2>
-        <h3>Your Top Tracks</h3>
-        <ul>
-          {tracks.map(track => (
-              <li key={track.track_id}>{track.track_name} – {track.artist_name}</li>
-          ))}
-        </ul>
+        <h1>Welcome, {user?.email}</h1>
+
+        <div>
+          <h2>Create a Session</h2>
+          <input
+              type="text"
+              placeholder="Session name"
+              value={sessionName}
+              onChange={(e) => setSessionName(e.target.value)}
+          />
+          <button onClick={createSession}>Create</button>
+        </div>
+
+        <div>
+          <h2>Join a Session</h2>
+          <input
+              type="text"
+              placeholder="Session ID"
+              value={joinSessionId}
+              onChange={(e) => setJoinSessionId(e.target.value)}
+          />
+          <button onClick={joinSession}>Join</button>
+        </div>
       </div>
-  )
+  );
 }
