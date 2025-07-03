@@ -1,74 +1,96 @@
-// app/page.tsx
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { User } from "@supabase/supabase-js";
-import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
-  const [user, setUser] = useState<User | null>(null);
-  const [sessionName, setSessionName] = useState("");
-  const [joinSessionId, setJoinSessionId] = useState("");
-  const router = useRouter();
+    const [user, setUser] = useState(null);
+    const [tracks, setTracks] = useState([]);
+    const [sessions, setSessions] = useState([]);
+    const [joinedSession, setJoinedSession] = useState(null);
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data?.user ?? null));
-  }, []);
+    // Fetch user on mount
+    useEffect(() => {
+        supabase.auth.getUser().then(({ data }) => {
+            setUser(data?.user);
+        });
+    }, []);
 
-  const createSession = async () => {
-    if (!user) return;
+    // Fetch open sessions
+    useEffect(() => {
+        const fetchSessions = async () => {
+            const { data, error } = await supabase
+                .from("sessions")
+                .select("id, name")
+                .eq("session_mode", 1);
 
-    const { data, error } = await supabase
-        .from("sessions")
-        .insert([
-          {
-            name: sessionName,
-            host_user_id: user.id,
-            session_mode: 1,
-          },
-        ])
-        .select()
-        .single();
+            if (error) {
+                console.error("Error fetching sessions:", error);
+            } else {
+                setSessions(data);
+            }
+        };
 
-    if (error) {
-      console.error("Error creating session:", error);
-      return;
-    }
+        fetchSessions();
+    }, []);
 
-    router.push(`/session/${data.id}`);
-  };
+    // Join a session
+    const joinSession = async (sessionId: string) => {
+        setJoinedSession(sessionId);
 
-  const joinSession = () => {
-    if (joinSessionId) {
-      router.push(`/session/${joinSessionId}`);
-    }
-  };
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-  return (
-      <div>
-        <h1>Welcome, {user?.email}</h1>
+        if (!session || sessionError) {
+            console.error("No session or error:", sessionError);
+            return;
+        }
 
+        const res = await fetch("/api/save-tracks-to-session", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ sessionId }),
+        });
+
+        const json = await res.json();
+
+        if (!res.ok) {
+            console.error("API error:", json.error || "Unknown error");
+            return;
+        }
+
+        setTracks(json.tracks);
+    };
+
+    return (
         <div>
-          <h2>Create a Session</h2>
-          <input
-              type="text"
-              placeholder="Session name"
-              value={sessionName}
-              onChange={(e) => setSessionName(e.target.value)}
-          />
-          <button onClick={createSession}>Create</button>
-        </div>
+            <h2>Welcome, {user?.email}</h2>
 
-        <div>
-          <h2>Join a Session</h2>
-          <input
-              type="text"
-              placeholder="Session ID"
-              value={joinSessionId}
-              onChange={(e) => setJoinSessionId(e.target.value)}
-          />
-          <button onClick={joinSession}>Join</button>
+            <h3>Open Sessions</h3>
+            <ul>
+                {sessions.map((session) => (
+                    <li key={session.id}>
+                        {session.name || "Unnamed Session"}
+                        <button onClick={() => joinSession(session.id)} style={{ marginLeft: 10 }}>
+                            Join
+                        </button>
+                    </li>
+                ))}
+            </ul>
+
+            {joinedSession && (
+                <>
+                    <h3>Your Tracks in Session</h3>
+                    <ul>
+                        {tracks.map((track) => (
+                            <li key={track.id}>
+                                {track.track_name} – {track.artist_name}
+                            </li>
+                        ))}
+                    </ul>
+                </>
+            )}
         </div>
-      </div>
-  );
+    );
 }
