@@ -1,4 +1,3 @@
-// app/page.tsx
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -12,7 +11,43 @@ export default function Dashboard() {
     const router = useRouter();
 
     useEffect(() => {
-        supabase.auth.getUser().then(({ data }) => setUser(data?.user ?? null));
+        const checkAndRefreshToken = async () => {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const currentUser = (await supabase.auth.getUser()).data?.user;
+            if (!sessionData || !sessionData.session || !currentUser) return;
+
+            const metadata = currentUser.user_metadata;
+            const token = metadata?.spotify_access_token;
+            const expiry = metadata?.spotify_expires_at;
+            const refreshToken = metadata?.spotify_refresh_token;
+
+            const now = Math.floor(Date.now() / 1000);
+
+            // Refresh if expired or about to expire
+            if (expiry && now >= expiry - 60 && refreshToken) {
+                const res = await fetch("/api/refresh-spotify-token", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ refresh_token: refreshToken }),
+                });
+
+                const refreshed = await res.json();
+                if (res.ok) {
+                    await supabase.auth.updateUser({
+                        data: {
+                            spotify_access_token: refreshed.access_token,
+                            spotify_expires_at: now + refreshed.expires_in,
+                        },
+                    });
+                } else {
+                    console.error("Failed to refresh token", refreshed);
+                }
+            }
+
+            setUser(currentUser);
+        };
+
+        checkAndRefreshToken();
     }, []);
 
     useEffect(() => {

@@ -7,16 +7,20 @@ const supabase = createClient(
 );
 
 module.exports = async function handler(req, res) {
-    const token = req.headers.authorization?.replace("Bearer ", "");
-    const { session_id } = req.body;
+    // const token = req.headers.authorization?.replace("Bearer ", "");
+    // const { session_id } = req.body;
+    const { session_id, spotify_access_token } = req.body;
 
-    if (!token || !session_id) {
-        return res.status(400).json({ error: "Missing token or session_id" });
-    }
+    // if (!token || !session_id) {
+    //     return res.status(400).json({ error: "Missing token or session_id" });
+    // }
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !user) {
-        return res.status(401).json({ error: "Invalid token" });
+    // const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    // if (userError || !user) {
+    //     return res.status(401).json({ error: "Invalid token" });
+    // }
+    if (!spotify_access_token || !session_id) {
+        return res.status(400).json({ error: "Missing Spotify access token or session_id" });
     }
 
     const spotifyToken = user.user_metadata?.spotify_access_token;
