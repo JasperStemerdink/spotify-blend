@@ -1,150 +1,86 @@
-"use client";
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
-import { User } from "@supabase/supabase-js";
-import { useRouter } from "next/navigation";
+'use client';
+
+import { useEffect, useState } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useRouter } from 'next/navigation';
+import type { Database } from '@/types_db';
 
 export default function Dashboard() {
-    const [user, setUser] = useState<User | null>(null);
-    const [sessionName, setSessionName] = useState("");
-    const [openSessions, setOpenSessions] = useState<any[]>([]);
+    const supabase = createClientComponentClient<Database>();
     const router = useRouter();
 
+    const [accessToken, setAccessToken] = useState<string | null>(null);
+    const [sessionId, setSessionId] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    // Fetch user session and token
     useEffect(() => {
-        const checkAndRefreshToken = async () => {
-            const { data: sessionData } = await supabase.auth.getSession();
-            const currentUser = (await supabase.auth.getUser()).data?.user;
-            if (!sessionData || !sessionData.session || !currentUser) return;
+        const fetchData = async () => {
+            const {
+                data: { session },
+                error: sessionError,
+            } = await supabase.auth.getSession();
 
-            const metadata = currentUser.user_metadata;
-            const token = metadata?.spotify_access_token;
-            const expiry = metadata?.spotify_expires_at;
-            const refreshToken = metadata?.spotify_refresh_token;
+            if (sessionError) {
+                setError('Could not fetch session.');
+                setLoading(false);
+                return;
+            }
 
-            const now = Math.floor(Date.now() / 1000);
+            const token = session?.user?.user_metadata?.provider_token;
 
-            // Refresh if expired or about to expire
-            if (expiry && now >= expiry - 60 && refreshToken) {
-                const res = await fetch("/api/refresh-spotify-token", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ refresh_token: refreshToken }),
+            if (!token) {
+                setError('No Spotify access token found.');
+                setLoading(false);
+                return;
+            }
+
+            const sessionIdFromStorage = localStorage.getItem('session_id');
+
+            if (!sessionIdFromStorage) {
+                setError('No session_id found in localStorage.');
+                setLoading(false);
+                return;
+            }
+
+            setAccessToken(token);
+            setSessionId(sessionIdFromStorage);
+
+            // Call save endpoint
+            try {
+                const response = await fetch('/api/save-tracks-to-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        accessToken: token,
+                        session_id: sessionIdFromStorage,
+                    }),
                 });
 
-                const refreshed = await res.json();
-                if (res.ok) {
-                    await supabase.auth.updateUser({
-                        data: {
-                            spotify_access_token: refreshed.access_token,
-                            spotify_expires_at: now + refreshed.expires_in,
-                        },
-                    });
-                } else {
-                    console.error("Failed to refresh token", refreshed);
+                const result = await response.json();
+
+                if (!response.ok) {
+                    setError(result.error || 'Error saving tracks.');
+                    setLoading(false);
+                    return;
                 }
-            }
 
-            setUser(currentUser);
-        };
-
-        checkAndRefreshToken();
-    }, []);
-
-    useEffect(() => {
-        const fetchSessions = async () => {
-            const { data, error } = await supabase
-                .from("sessions")
-                .select("id, name, created_at")
-                .eq("session_mode", 1)
-                .is("session_id", null); // Only top-level sessions
-
-            if (error) {
-                console.error("Error fetching sessions:", error);
-            } else {
-                setOpenSessions(data);
+                // Redirect to session page
+                router.push(`/session/${sessionIdFromStorage}`);
+            } catch (err) {
+                setError('Something went wrong while saving tracks.');
+                setLoading(false);
             }
         };
 
-        fetchSessions();
-    }, []);
+        fetchData();
+    }, [supabase, router]);
 
-    const createSession = async () => {
-        if (!user) return;
+    if (loading) return <p>Loading...</p>;
+    if (error) return <p className="text-red-600">Error: {error}</p>;
 
-        const { data, error } = await supabase
-            .from("sessions")
-            .insert([
-                {
-                    name: sessionName,
-                    host_user_id: user.id,
-                    session_mode: 1,
-                },
-            ])
-            .select()
-            .single();
-
-        if (error) {
-            console.error("Error creating session:", error);
-            return;
-        }
-
-        router.push(`/session/${data.id}`);
-    };
-
-    const joinSession = async (sessionId: string) => {
-        if (!user) return;
-
-        const { data, error } = await supabase
-            .from("sessions")
-            .insert([
-                {
-                    host_user_id: user.id,
-                    session_mode: 1,
-                    session_id: sessionId, // joins existing session
-                },
-            ])
-            .select()
-            .single();
-
-        if (error) {
-            console.error("Error joining session:", error);
-            return;
-        }
-
-        router.push(`/session/${sessionId}`);
-    };
-
-    return (
-        <div>
-            <h1>Welcome, {user?.email}</h1>
-
-            <div>
-                <h2>Create a Session</h2>
-                <input
-                    type="text"
-                    placeholder="Session name"
-                    value={sessionName}
-                    onChange={(e) => setSessionName(e.target.value)}
-                />
-                <button onClick={createSession}>Create</button>
-            </div>
-
-            <div>
-                <h2>Open Sessions</h2>
-                {openSessions.length === 0 ? (
-                    <p>No open sessions found.</p>
-                ) : (
-                    <ul>
-                        {openSessions.map((session) => (
-                            <li key={session.id} style={{ marginBottom: "1rem" }}>
-                                <strong>{session.name || "Unnamed session"}</strong>
-                                <br />
-                                <button onClick={() => joinSession(session.id)}>Join</button>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </div>
-        </div>
-    );
+    return null;
 }
