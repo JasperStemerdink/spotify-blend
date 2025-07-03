@@ -1,8 +1,9 @@
 "use client";
 
-import { supabase } from '@/lib/supabase'
+import { createSupabaseServerClient } from '@/lib/supabase'
 
 export default function Home() {
+    const supabase = createSupabaseServerClient();
     const signIn = async () => {
         await supabase.auth.signInWithOAuth({
             provider: 'spotify',

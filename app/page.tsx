@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseServerClient  } from "@/lib/supabase";
 import { useRouter } from 'next/navigation';
 import type { Database } from '@/types_db';
 
 export default function Dashboard() {
-    const supabase = createClientComponentClient<Database>();
+    const supabase = createSupabaseServerClient();
     const router = useRouter();
 
     const [accessToken, setAccessToken] = useState<string | null>(null);
