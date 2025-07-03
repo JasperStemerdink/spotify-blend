@@ -2,13 +2,14 @@
 "use client";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { createSupabaseServerClient  } from "@/lib/supabase";
 import { User } from "@supabase/supabase-js";
 
 export default function SessionPage() {
     const { id: sessionId } = useParams<{ id: string }>();
     const [user, setUser] = useState<User | null>(null);
     const [tracks, setTracks] = useState<any[]>([]);
+    const supabase = createSupabaseServerClient();
 
     useEffect(() => {
         supabase.auth.getUser().then(({ data }) => setUser(data?.user ?? null));
