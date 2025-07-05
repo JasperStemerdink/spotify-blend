@@ -23,7 +23,7 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: "Missing Spotify access token or session_id" });
     }
 
-    const spotifyToken = user.user_metadata?.spotify_access_token;
+    const spotifyToken = spotify_access_token;
 
     if (!spotifyToken) {
         return res.status(400).json({ error: 'No Spotify access token found in metadata' });

@@ -17,7 +17,16 @@ export default function SessionPage() {
     useEffect(() => {
         const fetchAndInsertTracks = async () => {
             const { data: session } = await supabase.auth.getSession();
-            if (!session || !session.session) return;
+            const { data: userData } = await supabase.auth.getUser();
+
+            if (!session || !session.session || !userData?.user) return;
+
+            const spotifyAccessToken = userData.user.user_metadata?.spotify_access_token;
+
+            if (!spotifyAccessToken) {
+                console.error("No Spotify access token in metadata");
+                return;
+            }
 
             const res = await fetch("/api/save-tracks-to-session", {
                 method: "POST",
@@ -25,7 +34,10 @@ export default function SessionPage() {
                     Authorization: `Bearer ${session.session.access_token}`,
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ session_id: sessionId }),
+                body: JSON.stringify({
+                    session_id: sessionId,
+                    spotify_access_token: spotifyAccessToken,
+                }),
             });
 
             const result = await res.json();
@@ -33,6 +45,7 @@ export default function SessionPage() {
                 console.error("Error saving tracks:", result);
             }
         };
+
 
         const fetchTracks = async () => {
             const { data, error } = await supabase
