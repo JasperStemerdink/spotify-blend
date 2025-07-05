@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     params.append("refresh_token", refresh_token);
 
     const basic = Buffer.from(
-        `${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`
+        `28d84e1ba0ea4def8500de4badbf00bb:01628cdb170d40ea9e702af5659be6da`
     ).toString("base64");
 
     try {
