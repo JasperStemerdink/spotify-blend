@@ -24,10 +24,14 @@ export default function SessionPage() {
             const spotifyAccessToken = await refreshSpotifyTokenIfNeeded(userData.user);
 
             if (!spotifyAccessToken) {
-                console.error(session.session.access_token);
+                console.error("No Spotify access token in metadata");
                 return;
             }
-            console.error("No Spotify access token in metadata");
+            console.error("hieronder komt de spotify token");
+            console.error(spotifyAccessToken);
+            console.error("hieronder komt de spotify session token");
+            console.error(session.session.access_token);
+
             const res = await fetch("/api/save-tracks-to-session", {
                 method: "POST",
                 headers: {
