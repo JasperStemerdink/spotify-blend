@@ -21,7 +21,7 @@ export default function SessionPage() {
 
             if (!session || !session.session || !userData?.user) return;
 
-            const spotifyAccessToken = userData.user.user_metadata?.spotify_access_token;
+            const spotifyAccessToken = await refreshSpotifyTokenIfNeeded(userData.user);
 
             if (!spotifyAccessToken) {
                 console.error("No Spotify access token in metadata");
@@ -61,6 +61,38 @@ export default function SessionPage() {
             fetchAndInsertTracks().then(fetchTracks);
         }
     }, [user, sessionId]);
+
+    const refreshSpotifyTokenIfNeeded = async (user: User) => {
+        const metadata = user.user_metadata;
+        const expiry = metadata?.spotify_expires_at;
+        const refreshToken = metadata?.spotify_refresh_token;
+
+        const now = Math.floor(Date.now() / 1000);
+
+        if (expiry && now >= expiry - 60 && refreshToken) {
+            const res = await fetch("/api/refresh-spotify-token", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ refresh_token: refreshToken }),
+            });
+
+            const refreshed = await res.json();
+            if (res.ok) {
+                await supabase.auth.updateUser({
+                    data: {
+                        spotify_access_token: refreshed.access_token,
+                        spotify_expires_at: now + refreshed.expires_in,
+                    },
+                });
+                return refreshed.access_token;
+            } else {
+                console.error("Failed to refresh token", refreshed);
+            }
+        }
+
+        return metadata?.spotify_access_token;
+    };
+
 
     return (
         <div>
