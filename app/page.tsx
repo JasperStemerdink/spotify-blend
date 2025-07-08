@@ -1,3 +1,4 @@
+// Dashboard where users can create or join sessions
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -10,20 +11,18 @@ export default function Dashboard() {
     const [openSessions, setOpenSessions] = useState<any[]>([]);
     const router = useRouter();
 
+    // Check auth + refresh token on mount
     useEffect(() => {
         const checkAndRefreshToken = async () => {
             const { data: sessionData } = await supabase.auth.getSession();
             const currentUser = (await supabase.auth.getUser()).data?.user;
-            if (!sessionData || !sessionData.session || !currentUser) return;
+            if (!sessionData?.session || !currentUser) return;
 
             const metadata = currentUser.user_metadata;
-            const token = metadata?.spotify_access_token;
             const expiry = metadata?.spotify_expires_at;
             const refreshToken = metadata?.spotify_refresh_token;
-
             const now = Math.floor(Date.now() / 1000);
 
-            // Refresh if expired or about to expire
             if (expiry && now >= expiry - 60 && refreshToken) {
                 const res = await fetch("/api/refresh-spotify-token", {
                     method: "POST",
@@ -39,8 +38,6 @@ export default function Dashboard() {
                             spotify_expires_at: now + refreshed.expires_in,
                         },
                     });
-                } else {
-                    console.error("Failed to refresh token", refreshed);
                 }
             }
 
@@ -50,6 +47,7 @@ export default function Dashboard() {
         checkAndRefreshToken();
     }, []);
 
+    // Load all open sessions
     useEffect(() => {
         const fetchSessions = async () => {
             const { data, error } = await supabase
@@ -58,16 +56,13 @@ export default function Dashboard() {
                 .eq("session_mode", 1)
                 .is("session_id", null); // Only top-level sessions
 
-            if (error) {
-                console.error("Error fetching sessions:", error);
-            } else {
-                setOpenSessions(data);
-            }
+            if (!error) setOpenSessions(data);
         };
 
         fetchSessions();
     }, []);
 
+    // Create a new session
     const createSession = async () => {
         if (!user) return;
 
@@ -83,14 +78,10 @@ export default function Dashboard() {
             .select()
             .single();
 
-        if (error) {
-            console.error("Error creating session:", error);
-            return;
-        }
-
-        router.push(`/session/${data.id}`);
+        if (!error) router.push(`/session/${data.id}`);
     };
 
+    // Join an existing session
     const joinSession = async (sessionId: string) => {
         if (!user) return;
 
@@ -100,18 +91,13 @@ export default function Dashboard() {
                 {
                     host_user_id: user.id,
                     session_mode: 1,
-                    session_id: sessionId, // joins existing session
+                    session_id: sessionId, // link to existing session
                 },
             ])
             .select()
             .single();
 
-        if (error) {
-            console.error("Error joining session:", error);
-            return;
-        }
-
-        router.push(`/session/${sessionId}`);
+        if (!error) router.push(`/session/${sessionId}`);
     };
 
     return (
@@ -136,7 +122,7 @@ export default function Dashboard() {
                 ) : (
                     <ul>
                         {openSessions.map((session) => (
-                            <li key={session.id} style={{ marginBottom: "1rem" }}>
+                            <li key={session.id}>
                                 <strong>{session.name || "Unnamed session"}</strong>
                                 <br />
                                 <button onClick={() => joinSession(session.id)}>Join</button>

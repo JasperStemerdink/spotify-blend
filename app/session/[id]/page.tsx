@@ -1,4 +1,4 @@
-// app/session/[id]/page.tsx
+// Displays the session page and fetches/saves user’s top tracks to the session
 "use client";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -10,10 +10,12 @@ export default function SessionPage() {
     const [user, setUser] = useState<User | null>(null);
     const [tracks, setTracks] = useState<any[]>([]);
 
+    // Get current user
     useEffect(() => {
         supabase.auth.getUser().then(({ data }) => setUser(data?.user ?? null));
     }, []);
 
+    // Fetch and save tracks on page load
     useEffect(() => {
         const fetchAndInsertTracks = async () => {
             const { data: session } = await supabase.auth.getSession();
@@ -22,17 +24,10 @@ export default function SessionPage() {
             if (!session || !session.session || !userData?.user) return;
 
             const spotifyAccessToken = await refreshSpotifyTokenIfNeeded(userData.user);
+            if (!spotifyAccessToken) return;
 
-            if (!spotifyAccessToken) {
-                console.error("No Spotify access token in metadata");
-                return;
-            }
-            console.error("hieronder komt de spotify token");
-            console.error(spotifyAccessToken);
-            console.error("hieronder komt de spotify session token");
-            console.error(session.session.access_token);
-
-            const res = await fetch("/api/save-tracks-to-session", {
+            // Save tracks via API
+            await fetch("/api/save-tracks-to-session", {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${session.session.access_token}`,
@@ -43,22 +38,16 @@ export default function SessionPage() {
                     spotify_access_token: spotifyAccessToken,
                 }),
             });
-
-            const result = await res.json();
-            if (!res.ok) {
-                console.error("Error saving tracks:", result);
-            }
         };
 
-
+        // Fetch tracks for display
         const fetchTracks = async () => {
             const { data, error } = await supabase
                 .from("user_tracks")
                 .select("*")
                 .eq("session_id", sessionId);
 
-            if (error) console.error("Error fetching tracks:", error);
-            else setTracks(data ?? []);
+            if (!error) setTracks(data ?? []);
         };
 
         if (user) {
@@ -66,11 +55,11 @@ export default function SessionPage() {
         }
     }, [user, sessionId]);
 
+    // Refresh token if expired
     const refreshSpotifyTokenIfNeeded = async (user: User) => {
         const metadata = user.user_metadata;
         const expiry = metadata?.spotify_expires_at;
         const refreshToken = metadata?.spotify_refresh_token;
-
         const now = Math.floor(Date.now() / 1000);
 
         if (expiry && now >= expiry - 60 && refreshToken) {
@@ -89,14 +78,11 @@ export default function SessionPage() {
                     },
                 });
                 return refreshed.access_token;
-            } else {
-                console.error("Failed to refresh token", refreshed);
             }
         }
 
         return metadata?.spotify_access_token;
     };
-
 
     return (
         <div>
