@@ -1,7 +1,7 @@
 // Saves user's top 50 Spotify tracks to the Supabase `user_tracks` table
 const { createClient } = require("@supabase/supabase-js");
 
-const supabase = createClient("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY");
+const supabase = createClient("https://mjtwikohjkfngnadmumr.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qdHdpa29oamtmbmduYWRtdW1yIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTExODM2NSwiZXhwIjoyMDY2Njk0MzY1fQ.q_Nl4CNPd_of2wz2NCigWUHqi1e9s1C4P_BFLpTdtu8");
 
 module.exports = async function handler(req, res) {
     const { session_id, spotify_access_token } = req.body;
