@@ -30,13 +30,15 @@ export default function SessionPage() {
             await fetch("/api/save-tracks-to-session", {
                 method: "POST",
                 headers: {
-                    Authorization: `Bearer ${spotifyAccessToken}`,
+                    Authorization: `Bearer ${session.session.access_token}`,
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
                     session_id: sessionId,
+                    spotify_access_token: spotifyAccessToken,
                 }),
             });
+
         };
 
         // Fetch tracks for display
