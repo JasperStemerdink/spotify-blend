@@ -11,6 +11,8 @@ module.exports = async function handler(req, res) {
     }
 
     try {
+        console.log("Spotify access token:", spotify_access_token);
+
         // Fetch top 50 tracks from Spotify API
         const topRes = await fetch("https://api.spotify.com/v1/me/top/tracks?limit=50", {
             headers: {
